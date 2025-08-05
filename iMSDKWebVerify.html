@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify</title>
+    <script id="CaptchaScript" src="https://t-captcha.gjacky.com/Captcha.js"></script>
+</head>
+
+<body>
+<script>
+
+        const urlParams = new URLSearchParams(window.location.search);
+        var v_appId = urlParams.get('app_id');
+        var useDefault = false;
+        if (v_appId == undefined || v_appId == null || v_appId == '') {
+            v_appId = '2033864629';
+            useDefault = true;
+        }
+
+        var v_uin = urlParams.get('uin');
+        var v_sid = urlParams.get('sid');
+
+        var options = {
+            needFeedBack: false,
+            uin: v_uin,
+            sid: v_sid
+        };
+
+        // javascript bridge callback
+        var jsBridgeCallback = function (res) {
+			var result = {};
+			if (res && res.ret === 0) {
+				if (useDefault) {
+					result = { ret: res.ret, msg: 'success', randstr: res.randstr, ticket: res.ticket };
+				} else {
+					result = { ret: res.ret, msg: 'success', randstr: res.randstr, ticket: res.ticket, appid: v_appId };
+				}
+			} else {
+				result = { ret: res.ret, msg: 'cancel', randstr: null, ticket: null };
+			}
+
+			window._captchaResult = result;  // **Natijani globalga yozamiz**
+
+			if (window.jsBridge) {
+				window.jsBridge.getData(JSON.stringify(result));
+			} else if (window.webkit) {
+				window.webkit.messageHandlers.callbackToIOSWithPrams.postMessage({ "params": result });
+			} else {
+				console.log(JSON.stringify(result));
+			}
+		}
+
+        var TCaptchaOnError = function (callback) {
+            // manually build ticket and randstr when load captcha fails
+            var ticket = 'terror_1001_' + v_appId + '_' + Math.floor(new Date().getTime() / 1000)
+            callback({
+                ret: 0,
+                randstr: '@' + Math.random().toString(36).substr(2),
+                ticket: ticket,
+                errorCode: 1001,
+                errorMessage: 'jsload_error'
+            })
+        }
+
+        try {
+            var captcha = new Captcha(v_appId, jsBridgeCallback, options);
+            captcha.show(); // show verify code
+        } catch (error) {
+            // deal error when load js error
+            TCaptchaOnError(jsBridgeCallback)
+        }
+
+
+    </script>
+</body>
+
+</html>
